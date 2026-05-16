@@ -18,6 +18,13 @@ bool flag2=false;
 int led1=D7;
 int led2=D4;
 
+//PIR Sensor
+#define PIR_SENSOR D6
+
+bool systemActive = false;
+unsigned long lastMotionTime = 0;
+const unsigned long timeout = 20000;
+
 // Enter network credentials:
 const char* ssid     = "theinfoflux";
 const char* password = "12345678";
@@ -44,19 +51,30 @@ String Status ="";
 
 
 void showScanMessage() {
+
+  if(systemActive == false)
+  {
+    lcd.clear();
+    lcd.noBacklight();
+    return;
+  }
+
+  lcd.backlight();
+
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Place finger");
+
   lcd.setCursor(0, 1);
   lcd.print("to scan...");
 }
-
 
 void setup() {
   Serial.begin(115200);        
   Serial.println('\n');
   Serial.println("System initialized");
   pinMode(led1,OUTPUT);
+  pinMode(PIR_SENSOR, INPUT);
   lcd.begin();
 lcd.backlight();
 
@@ -64,6 +82,12 @@ lcd.backlight();
   lcd.setCursor(0, 0);
   lcd.print("Initializing...");
   delay(1500);
+
+  lcd.clear();
+lcd.print("Calibrating");
+lcd.setCursor(0,1);
+lcd.print("Motion Sensor");
+delay(10000);
 
   finger.begin(57600);
   delay(100);
@@ -126,54 +150,108 @@ lcd.backlight();
 
 
 void loop() {
-uint8_t result = getFingerprintID();
 
-  if (result > 0) {  
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Fingerprint");
-    lcd.setCursor(0, 1);
-    lcd.print("Matched!");
-        if (finger.fingerID == 1) 
-  {
-   digitalWrite(led1,HIGH);
-    if( flag1== false)
-    {
-       lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Access Granted");
-   
-      cardholder="Salman";
-      id="EE123";
-      Status="in";
-      updatesheet(cardholder,id, Status);
+  int motion = digitalRead(PIR_SENSOR);
+
+  // Motion detected
+  if (motion == HIGH) {
+
+    lastMotionTime = millis();
+
+    if (!systemActive) {
+
+      systemActive = true;
+
+      lcd.backlight();
+
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Motion Detected");
+
       delay(1000);
-     flag1=true;
-      digitalWrite(led1,LOW);
-    }
 
- 
-    else
-    {   digitalWrite(led1,HIGH);
-           lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Access Granted");
-    
-      Status="";
-      cardholder="Salman";
-      id="EE123";
-      Status="out";
-             updatesheet(cardholder,id, Status);
-      delay(1000);
-       flag1=false;
-       digitalWrite(led1,LOW);
+      showScanMessage();
     }
-
-  }
-    showScanMessage();   
-     
   }
 
+  // Fingerprint active only when motion detected
+  if (systemActive) {
+
+    uint8_t result = getFingerprintID();
+
+    if (result > 0) {
+
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Fingerprint");
+
+      lcd.setCursor(0, 1);
+      lcd.print("Matched!");
+
+      if (finger.fingerID == 1)
+      {
+        digitalWrite(led1,HIGH);
+
+        if(flag1 == false)
+        {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Access Granted");
+
+          cardholder="Salman";
+          id="EE123";
+          Status="in";
+
+          updatesheet(cardholder,id, Status);
+
+          delay(1000);
+
+          flag1=true;
+
+          digitalWrite(led1,LOW);
+        }
+
+        else
+        {
+          digitalWrite(led1,HIGH);
+
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Access Granted");
+
+          cardholder="Salman";
+          id="EE123";
+          Status="out";
+
+          updatesheet(cardholder,id, Status);
+
+          delay(1000);
+
+          flag1=false;
+
+          digitalWrite(led1,LOW);
+        }
+      }
+
+      showScanMessage();
+    }
+
+    // Sleep mode
+    if (millis() - lastMotionTime > timeout) {
+
+      systemActive = false;
+
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Sleeping...");
+
+      delay(1000);
+
+      lcd.noBacklight();
+
+      lcd.clear();
+    }
+  }
 }
 
 void updatesheet(String cardholder, String id, String Status)
