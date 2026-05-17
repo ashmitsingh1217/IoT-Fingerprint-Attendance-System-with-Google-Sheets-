@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <Adafruit_Fingerprint.h>
+#include <SoftwareSerial.h>
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -16,14 +17,14 @@ bool flag1=false;
 bool flag2=false;
 
 int led1=D7;
-int led2=D4;
+//int led2=D4;
 
 //PIR Sensor
 #define PIR_SENSOR D6
 
 bool systemActive = false;
 unsigned long lastMotionTime = 0;
-const unsigned long timeout = 20000;
+const unsigned long timeout = 10000;
 
 // Enter network credentials:
 const char* ssid     = "theinfoflux";
